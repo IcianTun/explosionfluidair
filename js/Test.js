@@ -372,26 +372,41 @@ thing("Yo.");
         var mouse_xv = mouse.x - mouse.px;
         var mouse_yv = mouse.y - mouse.py;
         
-        //Loops through all of the columns
+
         for (i = 0; i < vec_cells.length; i++) {
             var cell_datas = vec_cells[i];
-
-            //Loops through all of the rows
             for (j = 0; j < cell_datas.length; j++) {
-                
-                //References the current cell
                 var cell_data = cell_datas[j];
-                
                 //If the mouse button is down, updates the cell velocity using the mouse velocity
                 if (mouse.down) {
                     change_cell_info(cell_data, mouse_xv, mouse_yv, pen_size);
                 }
-
-                //This updates the pressure values for the cell.
-                update_pdf_method(cell_data);
+                /// This updates the avg velocity for the cell.
+                step12(cell_data);
             }
         }
         
+        for (i = 0; i < vec_cells.length; i++) {
+            var cell_datas = vec_cells[i];
+
+            for (j = 0; j < cell_datas.length; j++) {
+                var cell_data = cell_datas[j];
+                step34(cell_data)
+            }
+        }
+        for (i = 0; i < vec_cells.length; i++) {
+            var cell_datas = vec_cells[i];
+
+            for (j = 0; j < cell_datas.length; j++) {
+                var cell_data = cell_datas[j];
+                update_density(cell_data);
+            }
+        }
+
+
+        
+
+
         /*
         This line clears the canvas. It needs to be cleared every time a new frame is drawn
         so the particles move. Otherwise, the particles would just look like long curvy lines.
@@ -444,7 +459,7 @@ thing("Yo.");
         }
     }
     
-    function update_pdf_method(cell_data) {
+    function step12(cell_data) {
         // 1.Approximate the fluid acceleration at the current time,
         // a = dv/dt
         // using the non-convective (first four) terms of equation (2)
@@ -457,22 +472,37 @@ thing("Yo.");
         // 2.
         var vx_tnext = cell_data.xv + ax_t;
         var vy_tnext = cell_data.yv + ay_t;
-        var avg_vx = (vx_tnext + cell_data.xv)/2;
-        var avg_vy = (vy_tnext + cell_data.yv)/2;
+        cell_data.avg_vx = (vx_tnext + cell_data.xv)/2;
+        cell_data.avg_vy = (vy_tnext + cell_data.yv)/2;
+        // update all cell avg v here 
 
+    }
+    
+    function step34(cell_data) {
         // 3.
         var laplacian_T = (cell_data.right.temperature - 4 * cell_data.temperature +  cell_data.left.temperature
             + cell_data.down.temperature + cell_data.up.temperature)    /(resolution*resolution);
 
-        // ตรงนี้ต้องใช้ avg_v แต่ทำไงวะเนี้ย    
-        var divergence_v = (cell_data.right.xv - cell_data.left.xv + cell_data.down.yv - cell_data.up.yv)/(2*resolution);
+        // 
+        var divergence_v = (cell_data.right.avg_xv - cell_data.left.avg_xv + cell_data.down.avg_yv - cell_data.up.avg_yv)/(2*resolution);
         
         var viscous_dissipation = -2*MU/3*(divergence_v**2); // +sigma something
-        var delta_internal_energy = k*laplacian_T - P*divergence_v + viscous_dissipation;
+        var approx_delta_internal_energy = (k_Thermal_conduct*laplacian_T 
+                            - cell_data.pressure*divergence_v 
+                            + viscous_dissipation)/cell_data.density;
         
-
+        // 4.
+        var divergence_rho_avgv = (cell_data.right.density*cell_data.right.avg_xv 
+                                - cell_data.left.density*cell_data.left.avg_xv 
+                                + cell_data.down.density*cell_data.down.avg_yv 
+                                - cell_data.up.density*cell_data.up.avg_yv)/(2*resolution);
+        cell_data.new_density -= divergence_rho_avgv;
+        
     }
-    
+
+    function update_density(cell_data){
+        cell_data.density = cell_data.new_density;
+    }
 
     function pressure_term(cell_data){
         var gradient_x = (cell_data.right.pressure - cell_data.left.pressure)/(2*resolution);
@@ -524,75 +554,6 @@ thing("Yo.");
         advection_term(cell_data);
     }
 
-    /*
-    This function updates the pressure value for an individual cell using the 
-    pressures of neighboring cells.
-    */
-    function update_pressure(cell_data) {
-
-        //This calculates the collective pressure on the X axis by summing the surrounding velocities
-        var pressure_x = (
-            cell_data.up_left.xv * 0.5 //Divided in half because it's diagonal
-            + cell_data.left.xv
-            + cell_data.down_left.xv * 0.5 //Same
-            - cell_data.up_right.xv * 0.5 //Same
-            - cell_data.right.xv
-            - cell_data.down_right.xv * 0.5 //Same
-        );
-        
-        //This does the same for the Y axis.
-        var pressure_y = (
-            cell_data.up_left.yv * 0.5
-            + cell_data.up.yv
-            + cell_data.up_right.yv * 0.5
-            - cell_data.down_left.yv * 0.5
-            - cell_data.down.yv
-            - cell_data.down_right.yv * 0.5
-        );
-        
-        //This sets the cell pressure to one-fourth the sum of both axis pressure.
-        cell_data.pressure = (pressure_x + pressure_y) * 0.25;
-    }
-    
-  
-    /*
-    This function updates the velocity value for an individual cell using the 
-    velocities of neighboring cells.
-    */
-    function update_velocity(cell_data) {
-
-        /*
-        This adds one-fourth of the collective pressure from surrounding cells to the 
-        cell's X axis velocity.
-        */
-        cell_data.xv += (
-            cell_data.up_left.pressure * 0.5
-            + cell_data.left.pressure
-            + cell_data.down_left.pressure * 0.5
-            - cell_data.up_right.pressure * 0.5
-            - cell_data.right.pressure
-            - cell_data.down_right.pressure * 0.5
-        ) * 0.25;
-        
-        //This does the same for the Y axis.
-        cell_data.yv += (
-            cell_data.up_left.pressure * 0.5
-            + cell_data.up.pressure
-            + cell_data.up_right.pressure * 0.5
-            - cell_data.down_left.pressure * 0.5
-            - cell_data.down.pressure
-            - cell_data.down_right.pressure * 0.5
-        ) * 0.25;
-        
-        /*
-        This slowly decreases the cell's velocity over time so that the fluid stops
-        if it's left alone.
-        */
-        cell_data.xv *= 0.99;
-        cell_data.yv *= 0.99;
-    }
-
-  
     //This function is used to create a cell object.
     function cell(x, y, res) {
 
@@ -612,15 +573,17 @@ thing("Yo.");
         this.yv = 0;
 
         //This is the pressure attribute
-        this.pressure = 0;
+        this.pressure = 1; /// 1 atm
 
         ///Add eng
         this.p_xv = 0;
         this.p_xy = 0;
-        this.temperature = 0;
-        this.density = 0;
-        this.energy = 0;
-
+        this.temperature = 290; /// 290 K and 1 atm at room condition
+        this.density = 0; /// rho
+        this.energy = 0; /// N
+        this.avg_vx = 0;
+        this.avg_vy = 0;
+        this.new_density = 0;
     }
 
   
