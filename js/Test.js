@@ -242,7 +242,21 @@ thing("Yo.");
 
     }
 
-  
+    
+    function update_pressure_map(){
+        for (i = 0; i < vec_cells.length; i++) {
+            var cell_datas = vec_cells[i];
+            for (j = 0; j < cell_datas.length; j++) {
+                var cell_data = cell_datas[j];
+                /// This updates the avg velocity for the cell.
+                ctx.fillStyle = `rgba(${Math.min(cell_data.pressure/(10*101325)*255,255)}, 0, 0, 1)`;
+                ctx.fillRect(cell_data.x, cell_data.y, 10, 10);
+            }
+        }
+    }
+
+    
+
     /*
     This function updates the position of the particles according to the velocity
     of the cells underneath, and also draws them to the canvas.
@@ -386,7 +400,6 @@ thing("Yo.");
             var cell_datas = vec_cells[i];
             for (j = 0; j < cell_datas.length; j++) {
                 var cell_data = cell_datas[j];
-
                 /// This updates the avg velocity for the cell.
                 step12(cell_data);
             }
@@ -449,7 +462,7 @@ thing("Yo.");
 
         //This calls the function to update the particle positions.
         update_particle();
-
+        update_pressure_map();
         //This replaces the previous mouse coordinates values with the current ones for the next frame.
         mouse.px = mouse.x;
         mouse.py = mouse.y;
@@ -493,8 +506,8 @@ thing("Yo.");
         var row = parseInt(mouse_y / resolution);
         cell_data = vec_cells[col][row];
 
-        cell_data.temperature =  600;
-        cell_data.pressure = 30*atm_to_pascal;
+        cell_data.temperature =  300;
+        cell_data.pressure = 1.1*atm_to_pascal;
     }
     
     function step12(cell_data) {
@@ -515,8 +528,6 @@ thing("Yo.");
         }
         cell_data.avg_vx = (vx_tnext + cell_data.vx)/2;
         cell_data.avg_vy = (vy_tnext + cell_data.vy)/2;
-        
-        // update all cell avg v here 
     }
     
     function step34(cell_data) {
