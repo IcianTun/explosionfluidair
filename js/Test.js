@@ -75,7 +75,9 @@ thing("Yo.");
     var resolution = 10; //Width and height of each cell in the grid.
     //Approximate Dyanamic Viscosity of Air around 30 Celsius
     var MU = 0.000018; /// Tun added 
+    var cv = 0.718; /// Tun added
     var k_Thermal_conduct = 0.026; /// Tun added
+    var R = 8.314; 
     
     var pen_size = 40; //Radius around the mouse cursor coordinates to reach when stirring
 
@@ -285,8 +287,8 @@ thing("Yo.");
                 in each axis. This is done so that the change in velocity is incrementally made as the
                 particle reaches the end of it's path across the cell.
                 */
-                p.xv += (1 - ax) * cell_data.xv * 0.05;
-                p.yv += (1 - ay) * cell_data.yv * 0.05;
+                p.vx += (1 - ax) * cell_data.vx * 0.05;
+                p.vy += (1 - ay) * cell_data.vy * 0.05;
                 
                 /*
                 These next four lines are are pretty much the same, except the neighboring cell's 
@@ -294,15 +296,15 @@ thing("Yo.");
                 them out, the particles would begin grouping at the boundary between cells because
                 the neighboring cells wouldn't be able to pull the particle into their boundaries.
                 */
-                p.xv += ax * cell_data.right.xv * 0.05;
-                p.yv += ax * cell_data.right.yv * 0.05;
+                p.vx += ax * cell_data.right.vx * 0.05;
+                p.vy += ax * cell_data.right.vy * 0.05;
                 
-                p.xv += ay * cell_data.down.xv * 0.05;
-                p.yv += ay * cell_data.down.yv * 0.05;
+                p.vx += ay * cell_data.down.vx * 0.05;
+                p.vy += ay * cell_data.down.vy * 0.05;
                 
                 //This adds the calculated velocity to the position coordinates of the particle.
-                p.x += p.xv;
-                p.y += p.yv;
+                p.x += p.vx;
+                p.y += p.vy;
                 
                 //For each axis, this gets the distance between the old position of the particle and it's new position.
                 var dx = p.px - p.x;
@@ -349,13 +351,13 @@ thing("Yo.");
                 p.y = p.py = Math.random() * canvas_height;
 
                 //Set the particles velocity to zero.
-                p.xv = 0;
-                p.yv = 0;
+                p.vx = 0;
+                p.vy = 0;
             }
             
             //These lines divide the particle's velocity in half everytime it loops, slowing them over time.
-            p.xv *= 0.5;
-            p.yv *= 0.5;
+            // p.vx *= 0.5;
+            // p.vy *= 0.5;
         }
     }
 
@@ -369,8 +371,8 @@ thing("Yo.");
         This calculates the velocity of the mouse by getting the distance between the last coordinates and 
         the new ones. The coordinates will be further apart depending on how fast the mouse is moving.
         */
-        var mouse_xv = mouse.x - mouse.px;
-        var mouse_yv = mouse.y - mouse.py;
+        var mouse_vx = mouse.x - mouse.px;
+        var mouse_vy = mouse.y - mouse.py;
         
 
         for (i = 0; i < vec_cells.length; i++) {
@@ -379,7 +381,8 @@ thing("Yo.");
                 var cell_data = cell_datas[j];
                 //If the mouse button is down, updates the cell velocity using the mouse velocity
                 if (mouse.down) {
-                    change_cell_info(cell_data, mouse_xv, mouse_yv, pen_size);
+                    change_cell_info(cell_data, mouse_vx, mouse_vy, pen_size);
+                    console.log(mouse.x/resolution,mouse.y/resolution)
                 }
                 /// This updates the avg velocity for the cell.
                 step12(cell_data);
@@ -402,7 +405,32 @@ thing("Yo.");
                 update_density(cell_data);
             }
         }
+        for (i = 0; i < vec_cells.length; i++) {
+            var cell_datas = vec_cells[i];
 
+            for (j = 0; j < cell_datas.length; j++) {
+                var cell_data = cell_datas[j];
+                step5_energy(cell_data);
+                step5_velocity(cell_data);
+            }
+        }
+        for (i = 0; i < vec_cells.length; i++) {
+            var cell_datas = vec_cells[i];
+
+            for (j = 0; j < cell_datas.length; j++) {
+                var cell_data = cell_datas[j];
+                update_velocity(cell_data);
+            }
+        }
+        for (i = 0; i < vec_cells.length; i++) {
+            var cell_datas = vec_cells[i];
+
+            for (j = 0; j < cell_datas.length; j++) {
+                var cell_data = cell_datas[j];
+                step6(cell_data);
+            }
+        }
+        
 
         
 
@@ -439,7 +467,6 @@ thing("Yo.");
         var dx = cell_data.x - mouse.x;
         var dy = cell_data.y - mouse.y;
         var dist = Math.sqrt(dy * dy + dx * dx);
-        
         //If the distance is less than the radius...
         if (dist < pen_size) {
 
@@ -450,13 +477,19 @@ thing("Yo.");
             
             //Calculate the magnitude of the mouse's effect (closer is stronger)
             var power = pen_size / dist;
-
             /*
             Apply the velocity to the cell by multiplying the power by the mouse velocity and adding it to the cell velocity
             */
-            cell_data.xv += mvelX * power;
-            cell_data.yv += mvelY * power;
-        }
+        //    cell_data.vx += mvelX * power;
+        //    cell_data.vy += mvelY * power;
+
+           /*
+            Apply the velocity to the cell by multiplying the power by the mouse velocity and adding it to the cell velocity
+            */
+           cell_data.temperature =  2900;
+           cell_data.pressure = 1000;
+           
+      }
     }
     
     function step12(cell_data) {
@@ -470,12 +503,12 @@ thing("Yo.");
         var ay_t = (-pressure[1] + extra[1] + viscosity[1])/cell_data.density;
         
         // 2.
-        var vx_tnext = cell_data.xv + ax_t;
-        var vy_tnext = cell_data.yv + ay_t;
-        cell_data.avg_vx = (vx_tnext + cell_data.xv)/2;
-        cell_data.avg_vy = (vy_tnext + cell_data.yv)/2;
+        var vx_tnext = cell_data.vx + ax_t;
+        var vy_tnext = cell_data.vy + ay_t;
+        cell_data.avg_vx = (vx_tnext + cell_data.vx)/2;
+        cell_data.avg_vy = (vy_tnext + cell_data.vy)/2;
+        
         // update all cell avg v here 
-
     }
     
     function step34(cell_data) {
@@ -483,27 +516,73 @@ thing("Yo.");
         var laplacian_T = (cell_data.right.temperature - 4 * cell_data.temperature +  cell_data.left.temperature
             + cell_data.down.temperature + cell_data.up.temperature)    /(resolution*resolution);
 
-        // 
-        var divergence_v = (cell_data.right.avg_xv - cell_data.left.avg_xv + cell_data.down.avg_yv - cell_data.up.avg_yv)/(2*resolution);
+        var divergence_v_avg = (cell_data.right.avg_vx - cell_data.left.avg_vx + cell_data.down.avg_vy - cell_data.up.avg_vy)/(2*resolution);
         
-        var viscous_dissipation = -2*MU/3*(divergence_v**2); // +sigma something
+        var viscous_dissipation = -2*MU/3*(divergence_v_avg**2); /// +sigma something
         var approx_delta_internal_energy = (k_Thermal_conduct*laplacian_T 
-                            - cell_data.pressure*divergence_v 
+                            - cell_data.pressure*divergence_v_avg 
                             + viscous_dissipation)/cell_data.density;
         
         // 4.
-        var divergence_rho_avgv = (cell_data.right.density*cell_data.right.avg_xv 
-                                - cell_data.left.density*cell_data.left.avg_xv 
-                                + cell_data.down.density*cell_data.down.avg_yv 
-                                - cell_data.up.density*cell_data.up.avg_yv)/(2*resolution);
-        cell_data.new_density -= divergence_rho_avgv;
+        
+        var divergence_rho_avgv = (
+                                    (cell_data.vx > cell_data.right.vx ? cell_data.density : cell_data.right.density)
+                                        *cell_data.right.avg_vx 
+                                    - (cell_data.vx > cell_data.left.vx ? cell_data.density : cell_data.left.density)
+                                        *cell_data.left.avg_vx 
+                                    + (cell_data.vy > cell_data.down.vy ? cell_data.density : cell_data.down.density)
+                                        *cell_data.down.avg_vy 
+                                    - (cell_data.vy > cell_data.up.vy ? cell_data.density : cell_data.up.density)
+                                        *cell_data.up.avg_vy
+                                    )/(2*resolution);
+        cell_data.delta_density -= divergence_rho_avgv;
         
     }
 
     function update_density(cell_data){
-        cell_data.density = cell_data.new_density;
+        cell_data.density -= cell_data.delta_density;
     }
 
+    function step5_energy(cell_data){
+        var laplacian_T = (cell_data.right.temperature - 4 * cell_data.temperature +  cell_data.left.temperature
+            + cell_data.down.temperature + cell_data.up.temperature)/(resolution*resolution);
+
+        var divergence_v = (cell_data.right.vx - cell_data.left.vx 
+                        + cell_data.down.vy - cell_data.up.vy)/(2*resolution);
+        
+        var viscous_dissipation = -2*MU/3*(divergence_v**2) + MU/2*(divergence_v**2) ; 
+        var delta_internal_energy = (k_Thermal_conduct*laplacian_T 
+                                        - cell_data.pressure*divergence_v 
+                                        + viscous_dissipation)/cell_data.density 
+                                    - divergence_v * cell_data.energy;
+        cell_data.energy += delta_internal_energy 
+    }
+
+    function step5_velocity(cell_data){
+        if (isNaN(cell_data.density)){
+            var a = 1;
+        }
+        var pressure = pressure_term(cell_data);
+        var extra = extra_term(cell_data);
+        var viscosity = viscosity_term(cell_data);
+        var divergence_v = (cell_data.right.vx - cell_data.left.vx 
+            + cell_data.down.vy - cell_data.up.vy)/(2*resolution);
+        cell_data.delta_vx = (-pressure[0] + extra[0] + viscosity[0])/cell_data.density - divergence_v * cell_data.vx ;
+        cell_data.delta_vy = (-pressure[1] + extra[1] + viscosity[1])/cell_data.density - divergence_v * cell_data.vy ;        
+    }
+
+    function update_velocity(cell_data){
+        cell_data.vx = cell_data.delta_vx;
+        if (isNaN(cell_data.vx)){
+            var a = 1;
+        }
+        cell_data.vy = cell_data.delta_vy;
+    }
+
+    function step6(cell_data){
+        cell_data.temperature = cell_data.energy/cv;
+        cell_data.pressure = cell_data.density * R * cell_data.temperature;   
+    }
     function pressure_term(cell_data){
         var gradient_x = (cell_data.right.pressure - cell_data.left.pressure)/(2*resolution);
         var gradient_y = (cell_data.down.pressure - cell_data.up.pressure)/(2*resolution);
@@ -512,8 +591,8 @@ thing("Yo.");
     }
 
     function extra_term(cell_data){
-        var laplacian_x = (cell_data.right.xv - 2 * cell_data.xv +  cell_data.left.xv)/(resolution*resolution);
-        var laplacian_y = (cell_data.down.yv - 2 * cell_data.yv +  cell_data.up.yv)/(resolution*resolution);
+        var laplacian_x = (cell_data.right.vx - 2 * cell_data.vx +  cell_data.left.vx)/(resolution*resolution);
+        var laplacian_y = (cell_data.down.vy - 2 * cell_data.vy +  cell_data.up.vy)/(resolution*resolution);
 
         return [ MU/3*laplacian_x, MU/3*laplacian_y ];
     }
@@ -521,38 +600,12 @@ thing("Yo.");
     // same as diffusion
     function viscosity_term(cell_data){
 
-        var laplacian_x = (cell_data.right.xv - 2 * cell_data.xv + cell_data.left.xv)/(resolution*resolution);
-        var laplacian_y = (cell_data.down.yv - 2 * cell_data.yv + cell_data.up.yv)/(resolution*resolution);
+        var laplacian_x = (cell_data.right.vx - 2 * cell_data.vx + cell_data.left.vx)/(resolution*resolution);
+        var laplacian_y = (cell_data.down.vy - 2 * cell_data.vy + cell_data.up.vy)/(resolution*resolution);
 
         return [MU * laplacian_x, MU * laplacian_y]; 
     }
 
-    //test advection
-    function advection_term(cell_data){
-        var gradient_x = (cell_data.right.xv - cell_data.left.xv)/(2*resolution);
-        var gradient_y = (cell_data.down.yv - cell_data.up.yv)/(2*resolution);
-        
-        //cell_data.xv -= cell_data.xv * gradient_x; 
-        //cell_data.yv -= cell_data.yv * gradient_y; 
-        
-        cell_data.xv *= 0.99; 
-        cell_data.yv *= 0.99;
-        return []
-    }
-
-    //can drop
-    function force_term(cell_data){
-        
-    }
-
-    function test_velocity(cell_data) {
-        var v_term = viscosity_term(cell_data);
-        var p_term = pressure_term(cell_data);
-
-        cell_data.xv += -p_term[0] + v_term[0];
-        cell_data.yv += -p_term[1] + v_term[1];
-        advection_term(cell_data);
-    }
 
     //This function is used to create a cell object.
     function cell(x, y, res) {
@@ -569,21 +622,23 @@ thing("Yo.");
         this.row = 0;
         
         //This stores the cell's velocity
-        this.xv = 0;
-        this.yv = 0;
+        this.vx = 0;
+        this.vy = 0;
 
         //This is the pressure attribute
         this.pressure = 1; /// 1 atm
 
         ///Add eng
-        this.p_xv = 0;
+        this.p_vx = 0;
         this.p_xy = 0;
         this.temperature = 290; /// 290 K and 1 atm at room condition
-        this.density = 0; /// rho
-        this.energy = 0; /// N
+        this.density = 1/(R*290); /// rho
+        this.energy = cv * 290; /// todo set begin N
         this.avg_vx = 0;
         this.avg_vy = 0;
-        this.new_density = 0;
+        this.delta_density = 0;
+        this.delta_vx = 0;
+        this.delta_vy = 0;
     }
 
   
@@ -591,7 +646,7 @@ thing("Yo.");
     function particle(x, y) {
         this.x = this.px = x;
         this.y = this.py = y;
-        this.xv = this.yv = 0;
+        this.vx = this.vy = 0;
     }
 
     /*
