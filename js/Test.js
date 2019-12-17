@@ -535,12 +535,12 @@ thing("Yo.");
                                     - (cell_data.vy > cell_data.up.vy ? cell_data.density : cell_data.up.density)
                                         *cell_data.up.avg_vy
                                     )/(2*resolution);
-        cell_data.delta_density -= divergence_rho_avgv;
+        cell_data.delta_density = -divergence_rho_avgv;
         
     }
 
     function update_density(cell_data){
-        cell_data.density -= cell_data.delta_density;
+        cell_data.density += cell_data.delta_density;
     }
 
     function step5_energy(cell_data){
@@ -552,9 +552,9 @@ thing("Yo.");
         
         var viscous_dissipation = -2*MU/3*(divergence_v**2) + MU/2*(divergence_v**2) ; 
         var delta_internal_energy = (k_Thermal_conduct*laplacian_T 
-                                        - cell_data.pressure*divergence_v 
+                                        - cell_data.pressure*divergence_v  
                                         + viscous_dissipation)/cell_data.density 
-                                    - divergence_v * cell_data.energy;
+                                    - divergence_v * cell_data.energy; /// TODO e heer ne mai shai divergence 
         cell_data.energy += delta_internal_energy 
     }
 
@@ -566,7 +566,7 @@ thing("Yo.");
         var extra = extra_term(cell_data);
         var viscosity = viscosity_term(cell_data);
         var divergence_v = (cell_data.right.vx - cell_data.left.vx 
-            + cell_data.down.vy - cell_data.up.vy)/(2*resolution);
+                            + cell_data.down.vy - cell_data.up.vy)/(2*resolution);
         cell_data.delta_vx = (-pressure[0] + extra[0] + viscosity[0])/cell_data.density - divergence_v * cell_data.vx ;
         cell_data.delta_vy = (-pressure[1] + extra[1] + viscosity[1])/cell_data.density - divergence_v * cell_data.vy ;        
     }
