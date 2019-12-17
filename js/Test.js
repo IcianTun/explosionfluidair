@@ -75,11 +75,11 @@ thing("Yo.");
     var resolution = 10; //Width and height of each cell in the grid.
     //Approximate Dyanamic Viscosity of Air around 30 Celsius
     var MU = 0.000018; /// Tun added 
-    var cv = 0.718; /// Tun added
+    var cv = 718; /// Tun added
     var k_Thermal_conduct = 0.026; /// Tun added
-    var R = 8.314; 
-    
-    var pen_size = 40; //Radius around the mouse cursor coordinates to reach when stirring
+    var R = 287.058; /// Tun added https://www.thoughtco.com/density-of-air-at-stp-607546
+    var atm_to_pascal = 101325;
+    var pen_size = 10; //Radius around the mouse cursor coordinates to reach when stirring
 
     var num_cols = canvas_width / resolution; //This value is the number of columns in the grid.
     var num_rows = canvas_height / resolution; //This is number of rows.
@@ -373,17 +373,20 @@ thing("Yo.");
         */
         var mouse_vx = mouse.x - mouse.px;
         var mouse_vy = mouse.y - mouse.py;
+
+        
+        //If the mouse button is down, updates the cell velocity using the mouse velocity
+        if (mouse.down) {
+            change_cell_info2(vec_cells, mouse.x, mouse.y, pen_size);
+            console.log(mouse.x/resolution,mouse.y/resolution)
+        }
         
 
         for (i = 0; i < vec_cells.length; i++) {
             var cell_datas = vec_cells[i];
             for (j = 0; j < cell_datas.length; j++) {
                 var cell_data = cell_datas[j];
-                //If the mouse button is down, updates the cell velocity using the mouse velocity
-                if (mouse.down) {
-                    change_cell_info(cell_data, mouse_vx, mouse_vy, pen_size);
-                    console.log(mouse.x/resolution,mouse.y/resolution)
-                }
+
                 /// This updates the avg velocity for the cell.
                 step12(cell_data);
             }
@@ -482,14 +485,16 @@ thing("Yo.");
             */
         //    cell_data.vx += mvelX * power;
         //    cell_data.vy += mvelY * power;
-
-           /*
-            Apply the velocity to the cell by multiplying the power by the mouse velocity and adding it to the cell velocity
-            */
-           cell_data.temperature =  2900;
-           cell_data.pressure = 1000;
-           
       }
+    }
+
+    function change_cell_info2(vec_cells,mouse_x, mouse_y){
+        var col = parseInt(mouse_x / resolution);
+        var row = parseInt(mouse_y / resolution);
+        cell_data = vec_cells[col][row];
+
+        cell_data.temperature =  600;
+        cell_data.pressure = 30*atm_to_pascal;
     }
     
     function step12(cell_data) {
@@ -505,6 +510,9 @@ thing("Yo.");
         // 2.
         var vx_tnext = cell_data.vx + ax_t;
         var vy_tnext = cell_data.vy + ay_t;
+        if (vx_tnext > 1000){
+            var a = 1;
+        }
         cell_data.avg_vx = (vx_tnext + cell_data.vx)/2;
         cell_data.avg_vy = (vy_tnext + cell_data.vy)/2;
         
@@ -554,7 +562,7 @@ thing("Yo.");
         var delta_internal_energy = (k_Thermal_conduct*laplacian_T 
                                         - cell_data.pressure*divergence_v  
                                         + viscous_dissipation)/cell_data.density 
-                                    - divergence_v * cell_data.energy; /// TODO e heer ne mai shai divergence 
+                                    - divergence_v * cell_data.energy; /// TODO term heer ne mai shai divergence 
         cell_data.energy += delta_internal_energy 
     }
 
@@ -567,16 +575,18 @@ thing("Yo.");
         var viscosity = viscosity_term(cell_data);
         var divergence_v = (cell_data.right.vx - cell_data.left.vx 
                             + cell_data.down.vy - cell_data.up.vy)/(2*resolution);
+
+        /// TODO tong last term mai shai use divergence!
         cell_data.delta_vx = (-pressure[0] + extra[0] + viscosity[0])/cell_data.density - divergence_v * cell_data.vx ;
         cell_data.delta_vy = (-pressure[1] + extra[1] + viscosity[1])/cell_data.density - divergence_v * cell_data.vy ;        
     }
 
     function update_velocity(cell_data){
-        cell_data.vx = cell_data.delta_vx;
+        cell_data.vx += cell_data.delta_vx;
         if (isNaN(cell_data.vx)){
             var a = 1;
         }
-        cell_data.vy = cell_data.delta_vy;
+        cell_data.vy += cell_data.delta_vy;
     }
 
     function step6(cell_data){
@@ -626,13 +636,13 @@ thing("Yo.");
         this.vy = 0;
 
         //This is the pressure attribute
-        this.pressure = 1; /// 1 atm
+        this.pressure = 1*atm_to_pascal; /// 1 atm
 
         ///Add eng
         this.p_vx = 0;
         this.p_xy = 0;
         this.temperature = 290; /// 290 K and 1 atm at room condition
-        this.density = 1/(R*290); /// rho
+        this.density = atm_to_pascal/(R*290); /// rho
         this.energy = cv * 290; /// todo set begin N
         this.avg_vx = 0;
         this.avg_vy = 0;
