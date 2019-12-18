@@ -519,6 +519,9 @@ thing("Yo.");
         var viscosity = viscosity_term(cell_data);
         var ax_t = (-pressure[0] + extra[0] + viscosity[0])/cell_data.density;
         var ay_t = (-pressure[1] + extra[1] + viscosity[1])/cell_data.density;
+
+        cell_data.delta_vx = ax_t;
+        cell_data.delta_vy = ay_t;
         
         // 2.
         var vx_tnext = cell_data.vx + ax_t;
@@ -541,6 +544,8 @@ thing("Yo.");
         var approx_delta_internal_energy = (k_Thermal_conduct*laplacian_T 
                             - cell_data.pressure*divergence_v_avg 
                             + viscous_dissipation)/cell_data.density;
+        
+        cell_data.delta_energy = approx_delta_internal_energy;
         
         // 4.
         
@@ -575,10 +580,7 @@ thing("Yo.");
         var gradient_Ny = (cell_data.down.energy - cell_data.up.energy)/(2*resolution);
         var convective = cell_data.vx * gradient_Nx + cell_data.vy * gradient_Ny; 
 
-        cell_data.delta_energy = (k_Thermal_conduct*laplacian_T 
-                                        - cell_data.pressure*divergence_v  
-                                        + viscous_dissipation)/cell_data.density 
-                                    - convective; /// TODO term heer ne mai shai divergence 
+        cell_data.delta_energy += -convective*(cell_data.density-cell_data.delta_density)/cell_data.density; /// TODO term heer ne mai shai divergence 
     }
 
     function step5_velocity(cell_data){
@@ -591,8 +593,8 @@ thing("Yo.");
         var convective = convective_term(cell_data);
 
         /// TODO tong last term mai shai use divergence!
-        cell_data.delta_vx = (-pressure[0] + extra[0] + viscosity[0])/cell_data.density - convective[0] ;
-        cell_data.delta_vy = (-pressure[1] + extra[1] + viscosity[1])/cell_data.density - convective[1];        
+        cell_data.delta_vx += -convective[0]*(cell_data.density-cell_data.delta_density)/cell_data.density ;
+        cell_data.delta_vy += -convective[1]*(cell_data.density-cell_data.delta_density)/cell_data.density;        
     }
 
     function update_velocity_energy(cell_data){
