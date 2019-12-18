@@ -584,12 +584,11 @@ thing("Yo.");
         var pressure = pressure_term(cell_data);
         var extra = extra_term(cell_data);
         var viscosity = viscosity_term(cell_data);
-        var divergence_v = (cell_data.right.vx - cell_data.left.vx 
-                            + cell_data.down.vy - cell_data.up.vy)/(2*resolution);
+        var convective = convective_term(cell_data);
 
         /// TODO tong last term mai shai use divergence!
-        cell_data.delta_vx = (-pressure[0] + extra[0] + viscosity[0])/cell_data.density - divergence_v * cell_data.vx ;
-        cell_data.delta_vy = (-pressure[1] + extra[1] + viscosity[1])/cell_data.density - divergence_v * cell_data.vy ;        
+        cell_data.delta_vx = (-pressure[0] + extra[0] + viscosity[0])/cell_data.density - convective[0] ;
+        cell_data.delta_vy = (-pressure[1] + extra[1] + viscosity[1])/cell_data.density - convective[1];        
     }
 
     function update_velocity(cell_data){
@@ -625,6 +624,13 @@ thing("Yo.");
         var laplacian_y = (cell_data.down.vy - 2 * cell_data.vy + cell_data.up.vy)/(resolution*resolution);
 
         return [MU * laplacian_x, MU * laplacian_y]; 
+    }
+
+    function convective_term(cell_data){
+        var gradient_x = (cell_data.right.vx - cell_data.left.vx)/(2*resolution);
+        var gradient_y = (cell_data.down.vy - cell_data.up.vy)/(2*resolution);
+
+        return [cell_data.vx * gradient_x, cell_data.vy * gradient_y]; 
     }
 
 
