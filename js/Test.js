@@ -80,7 +80,7 @@ thing("Yo.");
     var R = 287.058; /// Tun added https://www.thoughtco.com/density-of-air-at-stp-607546
     var atm_to_pascal = 101325;
     var pen_size = 10; //Radius around the mouse cursor coordinates to reach when stirring
-
+    var is_shown_pressure = false;
     var num_cols = canvas_width / resolution; //This value is the number of columns in the grid.
     var num_rows = canvas_height / resolution; //This is number of rows.
     var speck_count = 5000; //This determines how many particles will be made.
@@ -228,15 +228,17 @@ thing("Yo.");
         to the next if you move your mouse very fast across the screen. That's
         also how I measure the mouse's velocity.
         */
-        w.addEventListener("mousedown", mouse_down_handler);
-        w.addEventListener("touchstart", mouse_down_handler);
-
-        w.addEventListener("mouseup", mouse_up_handler);
-        w.addEventListener("touchend", touch_end_handler);
-
+        canvas.addEventListener("click", mouse_click_handler)
         canvas.addEventListener("mousemove", mouse_move_handler);
         canvas.addEventListener("touchmove", touch_move_handler);
-
+        w.addEventListener('keydown', function(event) {
+            if(event.key == "q") { // http://gcctech.org/csc/javascript/javascript_keycodes.htm
+                is_shown_pressure = true;
+            }
+            if(event.key == "w") {
+                is_shown_pressure = false;
+            }
+        });
         //When the page is finished loading, run the draw() function.
         w.onload = draw;
 
@@ -393,6 +395,7 @@ thing("Yo.");
         if (mouse.down) {
             change_cell_info2(vec_cells, mouse.x, mouse.y, pen_size);
             console.log(mouse.x/resolution,mouse.y/resolution)
+            mouse.down = false;
         }
         
 
@@ -462,7 +465,12 @@ thing("Yo.");
 
         //This calls the function to update the particle positions.
         update_particle();
-        update_pressure_map();
+        // update_pressure_map();
+        // if (is_shown_pressure){
+        //     update_pressure_map();
+        // } else {
+        //     update_particle();
+        // }
         //This replaces the previous mouse coordinates values with the current ones for the next frame.
         mouse.px = mouse.x;
         mouse.py = mouse.y;
@@ -526,9 +534,7 @@ thing("Yo.");
         // 2.
         var vx_tnext = cell_data.vx + ax_t;
         var vy_tnext = cell_data.vy + ay_t;
-        if (vx_tnext > 1000){
-            var a = 1;
-        }
+
         cell_data.avg_vx = (vx_tnext + cell_data.vx)/2;
         cell_data.avg_vy = (vy_tnext + cell_data.vy)/2;
     }
@@ -540,7 +546,7 @@ thing("Yo.");
 
         var divergence_v_avg = (cell_data.right.avg_vx - cell_data.left.avg_vx + cell_data.down.avg_vy - cell_data.up.avg_vy)/(2*resolution);
         
-        var viscous_dissipation = -2*MU/3*(divergence_v_avg**2); /// +sigma something
+        var viscous_dissipation = -2*MU/3*(divergence_v_avg**2) + MU/2*(divergence_v_avg**2); /// +sigma something
         var approx_delta_internal_energy = (k_Thermal_conduct*laplacian_T 
                             - cell_data.pressure*divergence_v_avg 
                             + viscous_dissipation)/cell_data.density;
@@ -568,14 +574,6 @@ thing("Yo.");
     }
 
     function step5_energy(cell_data){
-        var laplacian_T = (cell_data.right.temperature - 4 * cell_data.temperature +  cell_data.left.temperature
-            + cell_data.down.temperature + cell_data.up.temperature)/(resolution*resolution);
-
-        var divergence_v = (cell_data.right.vx - cell_data.left.vx 
-                        + cell_data.down.vy - cell_data.up.vy)/(2*resolution);
-        
-        var viscous_dissipation = -2*MU/3*(divergence_v**2) + MU/2*(divergence_v**2) ; 
-        
         var gradient_Nx = (cell_data.right.energy - cell_data.left.energy)/(2*resolution);
         var gradient_Ny = (cell_data.down.energy - cell_data.up.energy)/(2*resolution);
         var convective = cell_data.vx * gradient_Nx + cell_data.vy * gradient_Ny; 
@@ -584,12 +582,6 @@ thing("Yo.");
     }
 
     function step5_velocity(cell_data){
-        if (isNaN(cell_data.density)){
-            var a = 1;
-        }
-        var pressure = pressure_term(cell_data);
-        var extra = extra_term(cell_data);
-        var viscosity = viscosity_term(cell_data);
         var convective = convective_term(cell_data);
 
         /// TODO tong last term mai shai use divergence!
@@ -610,6 +602,8 @@ thing("Yo.");
         cell_data.temperature = cell_data.energy/cv;
         cell_data.pressure = cell_data.density * R * cell_data.temperature;   
     }
+
+
     function pressure_term(cell_data){
         var gradient_x = (cell_data.right.pressure - cell_data.left.pressure)/(2*resolution);
         var gradient_y = (cell_data.down.pressure - cell_data.up.pressure)/(2*resolution);
@@ -624,7 +618,6 @@ thing("Yo.");
         return [ MU/3*laplacian_x, MU/3*laplacian_y ];
     }
 
-    // same as diffusion
     function viscosity_term(cell_data){
 
         var laplacian_x = (cell_data.right.vx - 2 * cell_data.vx + cell_data.left.vx)/(resolution*resolution);
@@ -719,7 +712,10 @@ thing("Yo.");
         mouse.x = e.offsetX || e.layerX;
         mouse.y = e.offsetY || e.layerY;
     }
-
+    function mouse_click_handler(e){
+        e.preventDefault();
+        mouse.down = true;
+    }
   
     /*
     This function is called whenever one of the coordinates have changed. The coordinates are checked by the 
