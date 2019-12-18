@@ -435,7 +435,7 @@ thing("Yo.");
 
             for (j = 0; j < cell_datas.length; j++) {
                 var cell_data = cell_datas[j];
-                update_velocity(cell_data);
+                update_velocity_energy(cell_data);
             }
         }
         for (i = 0; i < vec_cells.length; i++) {
@@ -570,11 +570,15 @@ thing("Yo.");
                         + cell_data.down.vy - cell_data.up.vy)/(2*resolution);
         
         var viscous_dissipation = -2*MU/3*(divergence_v**2) + MU/2*(divergence_v**2) ; 
-        var delta_internal_energy = (k_Thermal_conduct*laplacian_T 
+        
+        var gradient_Nx = (cell_data.right.energy - cell_data.left.energy)/(2*resolution);
+        var gradient_Ny = (cell_data.down.energy - cell_data.up.energy)/(2*resolution);
+        var convective = cell_data.vx * gradient_Nx + cell_data.vy * gradient_Ny; 
+
+        cell_data.delta_energy = (k_Thermal_conduct*laplacian_T 
                                         - cell_data.pressure*divergence_v  
                                         + viscous_dissipation)/cell_data.density 
-                                    - divergence_v * cell_data.energy; /// TODO term heer ne mai shai divergence 
-        cell_data.energy += delta_internal_energy 
+                                    - convective; /// TODO term heer ne mai shai divergence 
     }
 
     function step5_velocity(cell_data){
@@ -591,12 +595,13 @@ thing("Yo.");
         cell_data.delta_vy = (-pressure[1] + extra[1] + viscosity[1])/cell_data.density - convective[1];        
     }
 
-    function update_velocity(cell_data){
+    function update_velocity_energy(cell_data){
         cell_data.vx += cell_data.delta_vx;
         if (isNaN(cell_data.vx)){
             var a = 1;
         }
         cell_data.vy += cell_data.delta_vy;
+        cell_data.energy += cell_data.delta_energy;
     }
 
     function step6(cell_data){
@@ -666,6 +671,7 @@ thing("Yo.");
         this.delta_density = 0;
         this.delta_vx = 0;
         this.delta_vy = 0;
+        this.delta_energy = 0;
     }
 
   
