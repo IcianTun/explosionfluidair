@@ -545,13 +545,13 @@ thing("Yo.");
         // 4.
         
         var divergence_rho_avgv = (
-                                    (cell_data.vx > cell_data.right.vx ? cell_data.density : cell_data.right.density)
+                                    (cell_data.avg_vx + cell_data.right.avg_vx > 0? cell_data.density : cell_data.right.density)
                                         *cell_data.right.avg_vx 
-                                    - (cell_data.vx > cell_data.left.vx ? cell_data.density : cell_data.left.density)
+                                    - (cell_data.avg_vx + cell_data.left.avg_vx < 0? cell_data.density : cell_data.left.density)
                                         *cell_data.left.avg_vx 
-                                    + (cell_data.vy > cell_data.down.vy ? cell_data.density : cell_data.down.density)
+                                    + (cell_data.avg_vy + cell_data.down.avg_vy > 0? cell_data.density : cell_data.down.density)
                                         *cell_data.down.avg_vy 
-                                    - (cell_data.vy > cell_data.up.vy ? cell_data.density : cell_data.up.density)
+                                    - (cell_data.avg_vy + cell_data.up.avg_vy < 0? cell_data.density : cell_data.up.density)
                                         *cell_data.up.avg_vy
                                     )/(2*resolution);
         cell_data.delta_density = -divergence_rho_avgv;
