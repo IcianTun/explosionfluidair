@@ -537,6 +537,7 @@ thing("Yo.");
 
         cell_data.avg_vx = (vx_tnext + cell_data.vx)/2;
         cell_data.avg_vy = (vy_tnext + cell_data.vy)/2;
+
     }
     
     function step34(cell_data) {
@@ -571,6 +572,8 @@ thing("Yo.");
 
     function update_density(cell_data){
         cell_data.density += cell_data.delta_density;
+        cell_data.density = Math.min(cell_data.density,100*1.2171636105739536)
+        cell_data.density = Math.max(cell_data.density,0.1)
     }
 
     function step5_energy(cell_data){
@@ -591,15 +594,22 @@ thing("Yo.");
 
     function update_velocity_energy(cell_data){
         cell_data.vx += cell_data.delta_vx;
-        if (isNaN(cell_data.vx)){
-            var a = 1;
-        }
         cell_data.vy += cell_data.delta_vy;
+        cell_data.vx = Math.min(cell_data.vx,1000);
+        cell_data.vx = Math.max(cell_data.vx,-1000);
+        cell_data.vy = Math.min(cell_data.vy,1000);
+        cell_data.vy = Math.max(cell_data.vy,-1000);
+
         cell_data.energy += cell_data.delta_energy;
+        cell_data.energy = Math.min(cell_data.energy,208220*1000);
+        cell_data.energy = Math.max(cell_data.energy,0);
     }
 
     function step6(cell_data){
         cell_data.temperature = cell_data.energy/cv;
+        cell_data.temperature = Math.min(cell_data.temperature,3000);
+        cell_data.temperature = Math.max(cell_data.temperature,0.1);
+
         cell_data.pressure = cell_data.density * R * cell_data.temperature;   
     }
 
